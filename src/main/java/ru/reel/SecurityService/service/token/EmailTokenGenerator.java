@@ -7,7 +7,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
 @Component
-public class EMailTokenGenerator implements TokenGenerator {
+public class EmailTokenGenerator implements TokenGenerator {
     @Override
     public String generate() throws NoSuchAlgorithmException {
         KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");

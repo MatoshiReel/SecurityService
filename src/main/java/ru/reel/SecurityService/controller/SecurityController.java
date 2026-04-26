@@ -9,9 +9,12 @@ import ru.reel.SecurityService.dto.NewLoginDto;
 import ru.reel.SecurityService.dto.NewPasswordDto;
 import ru.reel.SecurityService.infrastructure.mail.ModifiedParameter;
 import ru.reel.SecurityService.port.mail.MailNotificationSender;
+import ru.reel.SecurityService.port.mail.MailOtpSender;
 import ru.reel.SecurityService.port.mail.MailTokenSender;
+import ru.reel.SecurityService.port.redis.EmailOtpTemplate;
 import ru.reel.SecurityService.port.redis.EmailTokenTemplate;
 import ru.reel.SecurityService.service.AccountService;
+import ru.reel.SecurityService.service.otp.OtpGenerator;
 import ru.reel.SecurityService.service.token.TokenGenerator;
 import ru.reel.SecurityService.service.validator.EmailValidator;
 import ru.reel.SecurityService.service.validator.LoginValidator;
@@ -19,6 +22,7 @@ import ru.reel.SecurityService.service.validator.PasswordValidator;
 import ru.reel.SecurityService.service.validator.RequestValidator;
 import ru.reel.request.error.RequestError;
 import ru.reel.request.error.RequestFieldError;
+import ru.reel.request.error.RequestParamError;
 import ru.reel.request.error.reason.ErrorReason;
 
 import java.security.NoSuchAlgorithmException;
@@ -34,20 +38,29 @@ public class SecurityController {
     private final EmailValidator emailValidator;
     private final AccountService service;
     private final TokenGenerator tokenGenerator;
+    private final OtpGenerator otpGenerator;
     private final MailTokenSender tokenSender;
-    private final MailNotificationSender notificationSender;
+    private final MailNotificationSender<ModifiedParameter> notificationSender;
+    private final MailOtpSender otpSender;
     private final EmailTokenTemplate tokenTemplate;
+    private final EmailOtpTemplate otpTemplate;
+    private static final short OTP_SIZE = 6;
+    private static final short TOKEN_MAX_ATTEMPTS = 3;
+    private static final short OTP_MAX_ATTEMPTS = 5;
 
-    public SecurityController(RequestValidator requestValidator, PasswordValidator passwordValidator, LoginValidator loginValidator, EmailValidator emailValidator, AccountService service, TokenGenerator tokenGenerator, MailTokenSender tokenSender, MailNotificationSender<ModifiedParameter> notificationSender, EmailTokenTemplate tokenTemplate) {
+    public SecurityController(RequestValidator requestValidator, PasswordValidator passwordValidator, LoginValidator loginValidator, EmailValidator emailValidator, AccountService service, TokenGenerator tokenGenerator, OtpGenerator otpGenerator, MailTokenSender tokenSender, MailNotificationSender<ModifiedParameter> notificationSender, MailOtpSender otpSender, EmailTokenTemplate tokenTemplate, EmailOtpTemplate otpTemplate) {
         this.requestValidator = requestValidator;
         this.passwordValidator = passwordValidator;
         this.loginValidator = loginValidator;
         this.emailValidator = emailValidator;
         this.service = service;
         this.tokenGenerator = tokenGenerator;
+        this.otpGenerator = otpGenerator;
         this.tokenSender = tokenSender;
         this.notificationSender = notificationSender;
+        this.otpSender = otpSender;
         this.tokenTemplate = tokenTemplate;
+        this.otpTemplate = otpTemplate;
     }
 
     @PostMapping(path = "/password/change", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -85,22 +98,41 @@ public class SecurityController {
         List<RequestFieldError> errors = emailValidator.validate(newEmailDto);
         if(!errors.isEmpty())
             return ResponseEntity.badRequest().body(errors);
-        if(tokenTemplate.getToken(accountId) == null) {
-            String email = service.getEmailById(accountId);
-            if(email != null)
-                notificationSender.send(email, ModifiedParameter.EMAIL);
-            String token = tokenGenerator.generate();
-            tokenSender.send(newEmailDto.newEmail, token);
-            tokenTemplate.setWithAttempts(accountId, token, (short)3);
-            service.updatePendingEmailById(newEmailDto.newEmail, accountId);
-            service.updateEmailVerifiedById(false, accountId);
-        } else {
+        if(tokenTemplate.getToken(accountId) != null)
             return ResponseEntity.badRequest().body(RequestError.builder()
                     .errorReason(ErrorReason.EXIST)
                     .message("token")
                     .build());
-        }
+        String email = service.getEmailById(accountId);
+        if(email != null)
+            notificationSender.send(email, ModifiedParameter.EMAIL);
+        String token = tokenGenerator.generate();
+        tokenSender.send(newEmailDto.newEmail, token);
+        tokenTemplate.setWithAttempts(accountId, token, TOKEN_MAX_ATTEMPTS);
+        service.updatePendingEmailById(newEmailDto.newEmail, accountId);
+        service.updateEmailVerifiedById(false, accountId);
         return ResponseEntity.ok(tokenTemplate.getTokenTtl().toMinutes());
+    }
+
+    @PostMapping("/email/send/otp")
+    public ResponseEntity<?> sendOtpToEmail(@RequestBody(required = false) String password, @RequestHeader("X-Account-Id") String accountId) {
+        ResponseEntity<RequestError> emptyBodyResponse = requestValidator.checkBodyEmpty(password);
+        if(emptyBodyResponse != null)
+            return emptyBodyResponse;
+        passwordValidator.setAccountId(UUID.fromString(accountId));
+        RequestFieldError error = passwordValidator.checkPasswordMatching(password, "password");
+        if(error != null)
+            return ResponseEntity.badRequest().body(error);
+        String email = service.getEmailById(accountId);
+        if(email == null && !service.isEmailVerifiedById(accountId))
+            return ResponseEntity.badRequest().body(RequestError.builder()
+                    .errorReason(ErrorReason.NOT_EXIST)
+                    .message("email")
+                    .build());
+        String otp = otpGenerator.generate(OTP_SIZE);
+        otpSender.send(email, otp);
+        otpTemplate.setWithAttempts(email, otp, OTP_MAX_ATTEMPTS);
+        return ResponseEntity.ok(otpTemplate.getCodeTtl().toMinutes());
     }
 
     @PostMapping(path = "/email/change")
@@ -131,6 +163,44 @@ public class SecurityController {
         service.updateEmailById(service.getPendingEmailById(accountId), accountId);
         service.updatePendingEmailById(null, accountId);
         service.updateEmailVerifiedById(true, accountId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/email/2fa")
+    public ResponseEntity<?> switch2FaWithEmail(@RequestBody(required = false) String code, @RequestParam(value = "enable", required = false) Boolean isEnable, @RequestHeader("X-Account-Id") String accountId) {
+        ResponseEntity<RequestError> emptyBodyResponse = requestValidator.checkBodyEmpty(code);
+        if(emptyBodyResponse != null)
+            return emptyBodyResponse;
+        if(isEnable == null)
+            return ResponseEntity.badRequest().body(RequestParamError.builder()
+                    .param("enable")
+                    .errorReason(ErrorReason.EMPTY)
+                    .message("enable")
+                    .build());
+        String email = service.getEmailById(accountId);
+        if(email == null && !service.isEmailVerifiedById(accountId))
+            return ResponseEntity.badRequest().body(RequestError.builder()
+                    .errorReason(ErrorReason.NOT_EXIST)
+                    .message("email")
+                    .build());
+        if(otpTemplate.getCode(email) == null)
+            return ResponseEntity.badRequest().body(RequestError.builder()
+                    .errorReason(ErrorReason.NOT_EXIST)
+                    .message("code")
+                    .build());
+        if(otpTemplate.getAttempts(email) <= 0) {
+            otpTemplate.delCodeWithAttempts(email);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        if(!otpTemplate.verify(code, email)) {
+            otpTemplate.decrementAttempts(email);
+            return ResponseEntity.badRequest().body(RequestError.builder()
+                    .errorReason(ErrorReason.NOT_MATCH)
+                    .message("code")
+                    .build());
+        }
+        otpTemplate.delCodeWithAttempts(email);
+        service.update2FaEnabledById(isEnable, accountId);
         return ResponseEntity.noContent().build();
     }
 }

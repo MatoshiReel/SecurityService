@@ -48,6 +48,12 @@ public class AccountService {
         repository.updateEmailVerifiedById(isVerified, UUID.fromString(id));
     }
 
+    public void update2FaEnabledById(boolean is2FaEnabled, String id) throws NullPointerException, IllegalArgumentException {
+        if(id == null)
+            throw new NullPointerException();
+        repository.update2FaEnabledById(is2FaEnabled, UUID.fromString(id));
+    }
+
     public String getEmailById(String accountId) throws NullPointerException, IllegalArgumentException {
         if(accountId == null)
             throw new NullPointerException();
@@ -60,6 +66,13 @@ public class AccountService {
             throw new NullPointerException();
         Optional<Account> account = repository.findById(UUID.fromString(accountId));
         return account.map(Account::getPendingEmail).orElse(null);
+    }
+
+    public boolean isEmailVerifiedById(String accountId) throws NullPointerException, IllegalArgumentException {
+        if(accountId == null)
+            throw new NullPointerException();
+        Optional<Account> account = repository.findById(UUID.fromString(accountId));
+        return account.map(Account::isEmailVerified).orElse(false);
     }
 
     public boolean isExistsByEmail(String email) throws NullPointerException {
