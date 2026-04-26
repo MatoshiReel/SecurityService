@@ -45,7 +45,11 @@ public class LoginValidator implements Validator<RequestFieldError, List<Request
 
     public RequestFieldError checkLoginNullable(String login, String loginFieldName) {
         if(isEmpty(login))
-            return RequestFieldError.builder().field(loginFieldName).errorReason(ErrorReason.EMPTY).message(loginFieldName).build();
+            return RequestFieldError.builder()
+                    .field(loginFieldName)
+                    .errorReason(ErrorReason.EMPTY)
+                    .message(loginFieldName)
+                    .build();
         return null;
     }
 
@@ -55,9 +59,17 @@ public class LoginValidator implements Validator<RequestFieldError, List<Request
 
     public RequestFieldError checkNewLoginSize(String newLogin) {
         if(isLoginSizeLtMin(newLogin))
-            return RequestFieldError.builder().field("newLogin").errorReason(ErrorReason.LESS_SIZE).message("newLogin", String.valueOf(LOGIN_MIN_SIZE)).build();
+            return RequestFieldError.builder()
+                    .field("newLogin")
+                    .errorReason(ErrorReason.LESS_SIZE)
+                    .message("newLogin", String.valueOf(LOGIN_MIN_SIZE))
+                    .build();
         if(isLoginSizeGtMax(newLogin))
-            return RequestFieldError.builder().field("newLogin").errorReason(ErrorReason.GREATER_SIZE).message("newLogin", String.valueOf(LOGIN_MAX_SIZE)).build();
+            return RequestFieldError.builder()
+                    .field("newLogin")
+                    .errorReason(ErrorReason.GREATER_SIZE)
+                    .message("newLogin", String.valueOf(LOGIN_MAX_SIZE))
+                    .build();
         return null;
     }
 
@@ -71,7 +83,11 @@ public class LoginValidator implements Validator<RequestFieldError, List<Request
 
     public RequestFieldError checkNewLoginPatternMatching(String newLogin) {
         if(isLoginPatternNotValid(newLogin))
-            return RequestFieldError.builder().field("newLogin").errorReason(ErrorReason.PATTERN).message("newLogin", ALLOW_LOGIN_CHARS).build();
+            return RequestFieldError.builder()
+                    .field("newLogin")
+                    .errorReason(ErrorReason.PATTERN)
+                    .message("newLogin", ALLOW_LOGIN_CHARS)
+                    .build();
         return null;
     }
 
@@ -81,7 +97,11 @@ public class LoginValidator implements Validator<RequestFieldError, List<Request
 
     public RequestFieldError checkLoginExisting(String login, String loginFieldName) {
         if(isLoginExisting(login))
-            return RequestFieldError.builder().field(loginFieldName).errorReason(ErrorReason.EXIST).message(loginFieldName).build();
+            return RequestFieldError.builder()
+                    .field(loginFieldName)
+                    .errorReason(ErrorReason.EXIST)
+                    .message("login")
+                    .build();
         return null;
     }
 

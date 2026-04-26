@@ -25,7 +25,7 @@ public class Account {
     @Column(name = "password", nullable = false, length = 97)
     private String password;
 
-    @Column(name = "email", unique = true, length = 255)
+    @Column(name = "email", unique = true)
     private String email;
 
     @Column(name = "pending_email", unique = true)

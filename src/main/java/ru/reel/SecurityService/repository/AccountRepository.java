@@ -20,5 +20,18 @@ public interface AccountRepository extends CrudRepository<Account, UUID> {
     @Transactional
     @Query("UPDATE Account a SET a.login = :login WHERE a.id = :id")
     void updateLoginById(String login, UUID id);
+    @Modifying
+    @Transactional
+    @Query("UPDATE Account a SET a.email = :email WHERE a.id = :id")
+    void updateEmailById(String email, UUID id);
+    @Modifying
+    @Transactional
+    @Query("UPDATE Account a SET a.pendingEmail = :pendingEmail WHERE a.id = :id")
+    void updatePendingEmailById(String pendingEmail, UUID id);
+    @Modifying
+    @Transactional
+    @Query("UPDATE Account a SET a.emailVerified = :emailVerified WHERE a.id = :id")
+    void updateEmailVerifiedById(boolean emailVerified, UUID id);
     Optional<Account> findByLogin(String login);
+    Optional<Account> findByEmail(String email);
 }

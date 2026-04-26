@@ -8,7 +8,7 @@ import ru.reel.request.error.reason.ErrorReason;
 @Component
 public class RequestValidator {
     public ResponseEntity<RequestError> checkBodyEmpty(Object body) {
-        if(body == null)
+        if(body == null || (body instanceof String && ((String) body).isEmpty()))
             return ResponseEntity.badRequest().body(RequestError.builder()
                     .errorReason(ErrorReason.EMPTY)
                     .message("body")

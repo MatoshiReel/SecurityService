@@ -44,7 +44,11 @@ public class PasswordValidator implements Validator<RequestFieldError, List<Requ
 
     public RequestFieldError checkPasswordNullable(String password, String passwordFieldName) {
         if(isEmpty(password))
-            return RequestFieldError.builder().field(passwordFieldName).errorReason(ErrorReason.EMPTY).message(passwordFieldName).build();
+            return RequestFieldError.builder()
+                    .field(passwordFieldName)
+                    .errorReason(ErrorReason.EMPTY)
+                    .message(passwordFieldName)
+                    .build();
         return null;
     }
 
@@ -54,9 +58,17 @@ public class PasswordValidator implements Validator<RequestFieldError, List<Requ
 
     public RequestFieldError checkNewPasswordSize(String newPassword) {
         if(isPasswordSizeLtMin(newPassword))
-            return RequestFieldError.builder().field("newPassword").errorReason(ErrorReason.LESS_SIZE).message("newPassword", String.valueOf(PASSWORD_MIN_SIZE)).build();
+            return RequestFieldError.builder()
+                    .field("newPassword")
+                    .errorReason(ErrorReason.LESS_SIZE)
+                    .message("newPassword", String.valueOf(PASSWORD_MIN_SIZE))
+                    .build();
         if(isPasswordSizeGtMax(newPassword))
-            return RequestFieldError.builder().field("newPassword").errorReason(ErrorReason.GREATER_SIZE).message("newPassword", String.valueOf(PASSWORD_MAX_SIZE)).build();
+            return RequestFieldError.builder()
+                    .field("newPassword")
+                    .errorReason(ErrorReason.GREATER_SIZE)
+                    .message("newPassword", String.valueOf(PASSWORD_MAX_SIZE))
+                    .build();
         return null;
     }
 
@@ -70,7 +82,11 @@ public class PasswordValidator implements Validator<RequestFieldError, List<Requ
 
     public RequestFieldError checkNewPasswordPatternMatching(String newPassword) {
         if(isPasswordPatternNotValid(newPassword))
-            return RequestFieldError.builder().field("newPassword").errorReason(ErrorReason.PATTERN).message("newPassword", ALLOW_PASSWORD_CHARS).build();
+            return RequestFieldError.builder()
+                    .field("newPassword")
+                    .errorReason(ErrorReason.PATTERN)
+                    .message("newPassword", ALLOW_PASSWORD_CHARS)
+                    .build();
         return null;
     }
 
@@ -80,7 +96,11 @@ public class PasswordValidator implements Validator<RequestFieldError, List<Requ
 
     public RequestFieldError checkRepeatedPasswordEqualing(String newPassword, String repeatedPassword) {
         if(isRepeatedPasswordNotEqual(newPassword, repeatedPassword))
-            return RequestFieldError.builder().field("repeatedPassword").errorReason(ErrorReason.NOT_EQUAL).message("repeatedPassword", "newPassword").build();
+            return RequestFieldError.builder()
+                    .field("repeatedPassword")
+                    .errorReason(ErrorReason.NOT_EQUAL)
+                    .message("repeatedPassword", "newPassword")
+                    .build();
         return null;
     }
 
@@ -90,7 +110,11 @@ public class PasswordValidator implements Validator<RequestFieldError, List<Requ
 
     public RequestFieldError checkPasswordMatching(String password, String passwordFieldName) throws NullPointerException {
         if(isPasswordNotMatching(password))
-            return RequestFieldError.builder().field(passwordFieldName).errorReason(ErrorReason.NOT_MATCH).message(passwordFieldName).build();
+            return RequestFieldError.builder()
+                    .field(passwordFieldName)
+                    .errorReason(ErrorReason.NOT_MATCH)
+                    .message(passwordFieldName)
+                    .build();
         return null;
     }
 
