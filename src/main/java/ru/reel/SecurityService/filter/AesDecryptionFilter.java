@@ -35,12 +35,12 @@ public class AesDecryptionFilter implements Filter {
                 decryptedBody = Encryptors.delux(secretKeyAES, saltAES).decrypt(encryptedBody);
             } catch(IllegalArgumentException | IllegalStateException e) {
                 hasError = true;
-                log.warn("url: auth/signup, Illegal encrypting data : {}", encryptedBody, e);
+                log.warn("url: {} {}, Illegal encrypting data : {}", request.getMethod(), request.getRequestURL(), encryptedBody, e);
                 resolver.resolveException(request, response, null, new IllegalStateException());
             }
         }
         if(!hasError) {
-            MutableBodyHttpRequestWrapper requestWrapper = new MutableBodyHttpRequestWrapper(request, decryptedBody, MediaType.APPLICATION_JSON_VALUE);
+            MutableBodyHttpRequestWrapper requestWrapper = new MutableBodyHttpRequestWrapper(request, decryptedBody);
             filterChain.doFilter(requestWrapper, response);
         }
     }

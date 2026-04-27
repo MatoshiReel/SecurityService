@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 import ru.reel.SecurityService.filter.AesDecryptionFilter;
+import ru.reel.SecurityService.filter.ApplicationJsonContentTypeFilter;
 
 @Configuration
 public class FilterConfig {
@@ -26,8 +27,25 @@ public class FilterConfig {
         FilterRegistrationBean<AesDecryptionFilter> registrationBean = new FilterRegistrationBean<>();
         registrationBean.setFilter(new AesDecryptionFilter(resolver, secretKeyAES, saltAES));
         registrationBean.setOrder(1);
-        registrationBean.setEnabled(true);
-        registrationBean.addUrlPatterns("/security/change/password", "/security/change/login");
+        registrationBean.addUrlPatterns(
+                "/security/password/change",
+                "/security/login/change",
+                "/security/email/change",
+                "/security/email/send/token",
+                "/security/email/send/otp",
+                "/security/email/2fa");
+        return registrationBean;
+    }
+
+    @Bean
+    public FilterRegistrationBean<ApplicationJsonContentTypeFilter> applicationJsonContentTypeFilter() {
+        FilterRegistrationBean<ApplicationJsonContentTypeFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new ApplicationJsonContentTypeFilter());
+        registrationBean.setOrder(2);
+        registrationBean.addUrlPatterns(
+                "/security/password/change",
+                "/security/login/change",
+                "/security/email/send/token");
         return registrationBean;
     }
 }

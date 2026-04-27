@@ -15,33 +15,10 @@ import java.util.List;
 
 public class MutableBodyHttpRequestWrapper extends HttpServletRequestWrapper {
     private final byte[] body;
-    private final String contentType;
 
-    public MutableBodyHttpRequestWrapper(HttpServletRequest request, String body, String contentType) {
+    public MutableBodyHttpRequestWrapper(HttpServletRequest request, String body) {
         super(request);
         this.body = body.getBytes(StandardCharsets.UTF_8);
-        this.contentType = contentType;
-    }
-
-    @Override
-    public String getContentType() {
-        return contentType;
-    }
-
-    @Override
-    public String getHeader(String name) {
-        if ("Content-Type".equalsIgnoreCase(name)) {
-            return contentType;
-        }
-        return super.getHeader(name);
-    }
-
-    @Override
-    public Enumeration<String> getHeaders(String name) {
-        if ("Content-Type".equalsIgnoreCase(name)) {
-            return Collections.enumeration(List.of(contentType));
-        }
-        return super.getHeaders(name);
     }
 
     @Override

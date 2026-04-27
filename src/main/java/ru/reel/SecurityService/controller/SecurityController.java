@@ -63,7 +63,7 @@ public class SecurityController {
         this.otpTemplate = otpTemplate;
     }
 
-    @PostMapping(path = "/password/change", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(path = "/password/change", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> changePassword(@RequestBody(required = false) NewPasswordDto newPasswordDto, @RequestHeader("X-Account-Id") String accountId) {
         ResponseEntity<RequestError> emptyBodyResponse = requestValidator.checkBodyEmpty(newPasswordDto);
         if(emptyBodyResponse != null)
@@ -76,7 +76,7 @@ public class SecurityController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping(path = "/login/change", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(path = "/login/change", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> changeLogin(@RequestBody(required = false) NewLoginDto newLoginDto, @RequestHeader("X-Account-Id") String accountId) {
         ResponseEntity<RequestError> emptyBodyResponse = requestValidator.checkBodyEmpty(newLoginDto);
         if(emptyBodyResponse != null)
@@ -89,53 +89,7 @@ public class SecurityController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping(path = "/email/send/token", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> sendTokenToEmail(@RequestBody(required = false) NewEmailDto newEmailDto, @RequestHeader("X-Account-Id") String accountId) throws NoSuchAlgorithmException {
-        ResponseEntity<RequestError> emptyBodyResponse = requestValidator.checkBodyEmpty(newEmailDto);
-        if(emptyBodyResponse != null)
-            return emptyBodyResponse;
-        emailValidator.setAccountId(UUID.fromString(accountId));
-        List<RequestFieldError> errors = emailValidator.validate(newEmailDto);
-        if(!errors.isEmpty())
-            return ResponseEntity.badRequest().body(errors);
-        if(tokenTemplate.getToken(accountId) != null)
-            return ResponseEntity.badRequest().body(RequestError.builder()
-                    .errorReason(ErrorReason.EXIST)
-                    .message("token")
-                    .build());
-        String email = service.getEmailById(accountId);
-        if(email != null)
-            notificationSender.send(email, ModifiedParameter.EMAIL);
-        String token = tokenGenerator.generate();
-        tokenSender.send(newEmailDto.newEmail, token);
-        tokenTemplate.setWithAttempts(accountId, token, TOKEN_MAX_ATTEMPTS);
-        service.updatePendingEmailById(newEmailDto.newEmail, accountId);
-        service.updateEmailVerifiedById(false, accountId);
-        return ResponseEntity.ok(tokenTemplate.getTokenTtl().toMinutes());
-    }
-
-    @PostMapping("/email/send/otp")
-    public ResponseEntity<?> sendOtpToEmail(@RequestBody(required = false) String password, @RequestHeader("X-Account-Id") String accountId) {
-        ResponseEntity<RequestError> emptyBodyResponse = requestValidator.checkBodyEmpty(password);
-        if(emptyBodyResponse != null)
-            return emptyBodyResponse;
-        passwordValidator.setAccountId(UUID.fromString(accountId));
-        RequestFieldError error = passwordValidator.checkPasswordMatching(password, "password");
-        if(error != null)
-            return ResponseEntity.badRequest().body(error);
-        String email = service.getEmailById(accountId);
-        if(email == null && !service.isEmailVerifiedById(accountId))
-            return ResponseEntity.badRequest().body(RequestError.builder()
-                    .errorReason(ErrorReason.NOT_EXIST)
-                    .message("email")
-                    .build());
-        String otp = otpGenerator.generate(OTP_SIZE);
-        otpSender.send(email, otp);
-        otpTemplate.setWithAttempts(email, otp, OTP_MAX_ATTEMPTS);
-        return ResponseEntity.ok(otpTemplate.getCodeTtl().toMinutes());
-    }
-
-    @PostMapping(path = "/email/change")
+    @PostMapping(path = "/email/change", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> changeEmail(@RequestBody(required = false) String token, @RequestHeader("X-Account-Id") String accountId) {
         ResponseEntity<RequestError> emptyBodyResponse = requestValidator.checkBodyEmpty(token);
         if(emptyBodyResponse != null)
@@ -166,7 +120,53 @@ public class SecurityController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/email/2fa")
+    @PostMapping(path = "/email/send/token", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> sendTokenToEmail(@RequestBody(required = false) NewEmailDto newEmailDto, @RequestHeader("X-Account-Id") String accountId) throws NoSuchAlgorithmException {
+        ResponseEntity<RequestError> emptyBodyResponse = requestValidator.checkBodyEmpty(newEmailDto);
+        if(emptyBodyResponse != null)
+            return emptyBodyResponse;
+        emailValidator.setAccountId(UUID.fromString(accountId));
+        List<RequestFieldError> errors = emailValidator.validate(newEmailDto);
+        if(!errors.isEmpty())
+            return ResponseEntity.badRequest().body(errors);
+        if(tokenTemplate.getToken(accountId) != null)
+            return ResponseEntity.badRequest().body(RequestError.builder()
+                    .errorReason(ErrorReason.EXIST)
+                    .message("token")
+                    .build());
+        String email = service.getEmailById(accountId);
+        if(email != null)
+            notificationSender.send(email, ModifiedParameter.EMAIL);
+        String token = tokenGenerator.generate();
+        tokenSender.send(newEmailDto.newEmail, token);
+        tokenTemplate.setWithAttempts(accountId, token, TOKEN_MAX_ATTEMPTS);
+        service.updatePendingEmailById(newEmailDto.newEmail, accountId);
+        service.updateEmailVerifiedById(false, accountId);
+        return ResponseEntity.status(HttpStatus.OK).contentType(MediaType.TEXT_PLAIN).body(tokenTemplate.getTokenTtl().toMinutes());
+    }
+
+    @PostMapping(path = "/email/send/otp", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> sendOtpToEmail(@RequestBody(required = false) String password, @RequestHeader("X-Account-Id") String accountId) {
+        ResponseEntity<RequestError> emptyBodyResponse = requestValidator.checkBodyEmpty(password);
+        if(emptyBodyResponse != null)
+            return emptyBodyResponse;
+        passwordValidator.setAccountId(UUID.fromString(accountId));
+        RequestFieldError error = passwordValidator.checkPasswordMatching(password, "password");
+        if(error != null)
+            return ResponseEntity.badRequest().body(error);
+        String email = service.getEmailById(accountId);
+        if(email == null && !service.isEmailVerifiedById(accountId))
+            return ResponseEntity.badRequest().body(RequestError.builder()
+                    .errorReason(ErrorReason.NOT_EXIST)
+                    .message("email")
+                    .build());
+        String otp = otpGenerator.generate(OTP_SIZE);
+        otpSender.send(email, otp);
+        otpTemplate.setWithAttempts(email, otp, OTP_MAX_ATTEMPTS);
+        return ResponseEntity.status(HttpStatus.OK).contentType(MediaType.TEXT_PLAIN).body(otpTemplate.getCodeTtl().toMinutes());
+    }
+
+    @PostMapping(path = "/email/2fa", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> switch2FaWithEmail(@RequestBody(required = false) String code, @RequestParam(value = "enable", required = false) Boolean isEnable, @RequestHeader("X-Account-Id") String accountId) {
         ResponseEntity<RequestError> emptyBodyResponse = requestValidator.checkBodyEmpty(code);
         if(emptyBodyResponse != null)
